@@ -1,0 +1,51 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+*.cache
+
+# .NET
+**/bin/Debug/**
+**/bin/Release/**
+**/obj/Debug/**
+**/obj/Release/**
+**/project.assets.json
+**/project.lock.json
+
+# Node.js
+node_modules/
+.npm/
+.next/
+out/
+dist/
+build/
+*.log
+*.local
+
+# Frontend
+calendar-management-ui/.next/
+calendar-management-ui/node_modules/
+calendar-management-ui/package-lock.json
+calendar-management-ui/.env.local
+
+# Database
+Database/bin/
+Database/obj/
+Database/*.dbmdl
+Database/*.publish.xml
+
+# IDE
+.vs/
+.vscode/
+*.csproj.user
+*.slnx.ide
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.log
+/tmp/

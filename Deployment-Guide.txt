@@ -1,0 +1,286 @@
+================================================================================
+                        CALENDAR MANAGEMENT SYSTEM
+                    DEPLOYMENT & SETUP GUIDE
+================================================================================
+
+Project: Calendar Management System
+Backend: ASP.NET Core Web API (.NET 10)
+Frontend: Next.js 16 + TypeScript + Tailwind CSS
+Database: SQL Server Database Project (SSDT)
+API Port: 5050 | Frontend Port: 3000
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Solution Architecture
+2. Prerequisites
+3. Database Deployment (SSDT) - 3 Methods
+4. Backend Deployment (ASP.NET Core Web API)
+5. Frontend Deployment (Next.js)
+6. Running All Services Together
+7. API Endpoints Quick Reference
+8. Troubleshooting
+9. File Locations Summary
+
+================================================================================
+1. SOLUTION ARCHITECTURE
+================================================================================
+
+CalendarManagementSystem/
+│
+├── backend/CalendarManagement.Api/          # ASP.NET Core Web API
+│   ├── Controllers/                          # EventsController, DashboardController
+│   ├── Models/                               # Domain models
+│   ├── DTOs/                                 # Data transfer objects
+│   ├── Interfaces/                           # Repository & Service interfaces
+│   ├── Repositories/                         # ADO.NET + stored procedures
+│   ├── Services/                             # Business logic
+│   ├── Data/                                 # DbConnectionFactory
+│   ├── Middleware/                           # Exception handling (RFC 7807)
+│   ├── Program.cs                            # DI, CORS, Swagger
+│   └── appsettings.json                      # Connection string & CORS
+│
+├── frontend/calendar-management-ui/          # Next.js 16 + TypeScript
+│   ├── app/                                  # App Router pages
+│   ├── components/                           # Shadcn UI + feature components
+│   ├── hooks/                                # React hooks (useEvents, etc.)
+│   ├── types/                                # TypeScript types
+│   ├── utils/                                # Date/format utilities
+│   └── package.json                          # Dependencies
+│
+└── Database/                                 # SSDT Database Project
+    ├── CalendarManagement.Database.sqlproj
+    ├── Tables/StoredProcedures/Functions/
+    ├── Views/Indexes/Scripts/
+    └── Deployment/
+
+================================================================================
+2. PREREQUISITES
+================================================================================
+
+Tool                    Version         Purpose
+---------------------------------------------------------------
+.NET SDK                10.0.301+       Build and run ASP.NET Core API
+Node.js                 v22+            Run Next.js frontend
+npm                     10+             Install frontend dependencies
+SQL Server LocalDB      (localdb)\MSSQLLocalDB   Database engine
+Visual Studio 2022      17.0+           SSDT database project (optional)
+
+STEP 1 - Verify LocalDB is running:
+    sqllocaldb info MSSQLLocalDB
+    If stopped: sqllocaldb start MSSQLLocalDB
+
+================================================================================
+3. DATABASE DEPLOYMENT (SSDT)
+================================================================================
+
+The database project is located at:
+    Database/CalendarManagement.Database.sqlproj
+
+It can be deployed three ways:
+
+--------------------------------------------------------------------------------
+OPTION A: Visual Studio 2022 (Recommended)
+--------------------------------------------------------------------------------
+
+STEP 1: Open Visual Studio 2022 (with SQL Server Data Tools workload installed).
+
+STEP 2: File -> Open -> Project/Solution ->
+        Select: Database/CalendarManagement.Database.sqlproj
+
+STEP 3: Expand Deployment/ and open CalendarManagement.Database.publish.xml.
+        Set:
+        TargetServerName: (localdb)\MSSQLLocalDB
+        TargetDatabaseName: CalendarManagementDb
+
+STEP 4: Right-click the project -> Publish... ->
+        Select profile -> Publish
+
+STEP 5: Generate DACPAC (optional):
+        Right-click project -> Publish -> Generate Script
+        Or use SqlPackage.exe:
+        SqlPackage.exe /a:Extract /sfn:"Database\bin\Debug\CalendarManagement.Database.dacpac" /tfn:"CalendarManagementDatabase.dacpac"
+
+--------------------------------------------------------------------------------
+OPTION B: Command Line (sqlcmd) - No Visual Studio Required
+--------------------------------------------------------------------------------
+
+STEP 1: Create the database if it doesn't exist:
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -E -d master -Q "IF DB_ID(N'CalendarManagementDb') IS NULL CREATE DATABASE CalendarManagementDb;"
+
+STEP 2: Deploy the full schema (tables, procedures, functions, indexes):
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -E -d CalendarManagementDb -I -b -i "Database/Scripts/Deploy-Database.sql"
+
+STEP 3: Seed lookup data (EventTypes, EventCategories, EventStatuses):
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -E -d CalendarManagementDb -I -b -i "Database/Scripts/Post-Deployment.sql"
+
+STEP 4: Verify deployment:
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -E -d CalendarManagementDb -Q "SELECT name FROM sys.tables ORDER BY name;" -h -1 -W
+
+IMPORTANT: Always use the -I flag with sqlcmd to enable QUOTED_IDENTIFIER.
+Without it, filtered indexes will fail with Msg 1934.
+
+--------------------------------------------------------------------------------
+OPTION C: MSBuild - Build Without Deploying
+--------------------------------------------------------------------------------
+
+msbuild Database\CalendarManagement.Database.sqlproj /p:Configuration=Debug /p:Platform=AnyCPU
+
+Output: Database\bin\Debug\CalendarManagement.Database.dacpac
+
+--------------------------------------------------------------------------------
+EXPECTED DATABASE STATE
+--------------------------------------------------------------------------------
+
+Object Type    Count    Details
+---------------------------------------------------------------
+Tables         4        CalendarEvents, EventTypes, EventCategories, EventStatuses
+Stored Procs   8        usp_CalendarEvent_Create/Update/Delete/GetById/GetUpcoming/GetPast/GetStatistics/SelectAll
+Functions      1        fn_CalendarEvent_IsOverlapping
+Indexes        9        8 custom + 1 primary key on CalendarEvents
+
+================================================================================
+4. BACKEND DEPLOYMENT (ASP.NET CORE WEB API)
+================================================================================
+
+STEP 1: Create the Project
+    cd C:\Users\bibek.pandey\source\repos\CalendarManagementSystem
+    mkdir backend\CalendarManagement.Api
+    cd backend\CalendarManagement.Api
+    dotnet new webapi --name CalendarManagement.Api --force
+
+STEP 2: Add NuGet Packages
+    dotnet add package Microsoft.Data.SqlClient
+    dotnet add package Swashbuckle.AspNetCore --version 10.3.1
+    dotnet add package Microsoft.Extensions.Diagnostics.HealthChecks
+
+STEP 3: Configure appsettings.json
+    {
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=CalendarManagementDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+      },
+      "Cors": {
+        "AllowedOrigins": [
+          "http://localhost:3000",
+          "http://127.0.0.1:3000"
+        ]
+      }
+    }
+
+STEP 4: Build & Run
+    dotnet build
+    dotnet run
+
+API will be available at: http://localhost:5050
+Swagger UI: http://localhost:5050/swagger
+Health check: GET http://localhost:5050/health
+
+================================================================================
+5. FRONTEND DEPLOYMENT (NEXT.JS)
+================================================================================
+
+STEP 1: Create the Project
+    cd C:\Users\bibek.pandey\source\repos\CalendarManagementSystem\frontend
+    npx create-next-app@latest calendar-management-ui --yes --ts --tailwind --app-dir --eslint --import-css
+    cd calendar-management-ui
+
+NOTE: Next.js package names cannot contain capital letters, so use
+      calendar-management-ui (lowercase with hyphens).
+
+STEP 2: Install Dependencies
+    # FullCalendar
+    npm install @fullcalendar/react @fullcalendar/daygrid @fullcalendar/timegrid @fullcalendar/list --legacy-peer-deps
+
+    # Axios for API calls
+    npm install axios --legacy-peer-deps
+
+    # Shadcn UI primitives
+    npm install @radix-ui/react-slot clsx tailwind-merge lucide-react --legacy-peer-deps
+
+    # Tailwind CSS v4
+    npm install -D tailwindcss @tailwindcss/postcss --legacy-peer-deps
+
+STEP 3: Configure Tailwind v4
+    # tailwind.config.js
+    module.exports = {
+      content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
+      theme: { extend: {} },
+      plugins: []
+    };
+
+    # postcss.config.js
+    module.exports = {
+      plugins: { "@tailwindcss/postcss": {} }
+    };
+
+STEP 4: Run the Frontend
+    npm run dev --webpack
+
+Frontend will be available at: http://localhost:3000
+
+WARNING: Use --webpack flag. Next.js 16 uses Turbopack by default, which has
+         compatibility issues with @fullcalendar/core subpath exports.
+         Always use --webpack for development.
+
+================================================================================
+6. RUNNING ALL SERVICES TOGETHER
+================================================================================
+
+Service             URL                     Command
+-------------------------------------------------------------------------------
+Database            (localdb)\MSSQLLocalDB  Deploy via Visual Studio SSDT or sqlcmd
+Backend API         http://localhost:5050   dotnet run  (in backend/)
+Frontend            http://localhost:3000   npm run dev --webpack  (in frontend/)
+Swagger Docs        http://localhost:5050/swagger  (auto-enabled with backend)
+
+CORS is pre-configured on the backend to allow http://localhost:3000.
+No additional CORS setup is needed.
+
+================================================================================
+7. API ENDPOINTS QUICK REFERENCE
+================================================================================
+
+Endpoint                              Method    Description
+-------------------------------------------------------------------------------
+GET /health                           GET       Health check
+GET /api/events?page=1&pageSize=20    GET       List events (paged, filterable)
+GET /api/events/upcoming?limit=5      GET       Upcoming events
+GET /api/events/past                  GET       Past events
+GET /api/events/{id}                  GET       Get single event
+POST /api/events                      POST      Create event
+PUT /api/events/{id}                  PUT       Update event (with overlap validation)
+DELETE /api/events/{id}               DELETE    Delete event
+GET /api/dashboard/summary            GET       Dashboard statistics
+GET /swagger/v1/swagger.json          GET       OpenAPI specification
+
+================================================================================
+8. TROUBLESHOOTING
+================================================================================
+
+Issue                                 Solution
+-------------------------------------------------------------------------------
+LocalDB not running                   sqllocaldb start MSSQLLocalDB
+Filtered indexes fail (Msg 1934)      Use -I flag with sqlcmd to enable QUOTED_IDENTIFIER
+FullCalendar/Turbopack errors         Run frontend with npm run dev --webpack
+PUT/DELETE return 404                 Fixed: code falls back to @@ROWCOUNT when ExecuteNonQuery returns -1 (SET NOCOUNT ON)
+Database connection fails             Verify connection string in backend/CalendarManagement.Api/appsettings.json
+Port 5050 or 3000 in use              Kill existing processes: Get-Process -Name dotnet | Stop-Process -Force
+
+================================================================================
+9. FILE LOCATIONS SUMMARY
+================================================================================
+
+Component                     Path
+-------------------------------------------------------------------------------
+Backend Solution              CalendarManagementSystem.slnx
+Backend Project               backend/CalendarManagement.Api/CalendarManagement.Api.csproj
+Frontend Project              frontend/calendar-management-ui/
+SSDT Database Project         Database/CalendarManagement.Database.sqlproj
+Publish Profile               Database/Deployment/CalendarManagement.Database.publish.xml
+Deploy Script                 Database/Scripts/Deploy-Database.sql
+Seed Script                   Database/Scripts/Post-Deployment.sql
+DACPAC Output                 Database/bin/Debug/CalendarManagement.Database.dacpac
+
+================================================================================
+END OF GUIDE
+================================================================================

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PublishProfile Include="CalendarManagement.Database" Version="1.0" Mode="DacFx" PublishDatabaseProfile="true">
+  <Project>CalendarManagement.Database</Project>
+  <FilePath>CalendarManagement.Database.sqlproj</FilePath>
+  <PublishCommand>msbuild /t:Publish CalendarManagement.Database.sqlproj</PublishCommand>
+  <Database Name="CalendarManagement" ServerInstance="localhost\SQLEXPRESS" />
+</PublishProfile>

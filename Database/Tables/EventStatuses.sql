@@ -1,0 +1,6 @@
+CREATE TABLE dbo.EventStatuses
+(
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_EventStatuses PRIMARY KEY,
+    Name NVARCHAR(50) NOT NULL CONSTRAINT UQ_EventStatuses_Name UNIQUE
+);
+GO

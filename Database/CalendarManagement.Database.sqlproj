@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" DefaultTargets="Build;Publish" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" xmlns:msbim="http://schemas.microsoft.com/VisualStudio/8.0/Design/Deploy/2003" xmlns:dsp="urn:schemas-microsoft-com:deployment">
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.props" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{5E8C6F3A-2D41-4B7E-9C08-3F0A6D5E4C2B}</ProjectGuid>
+    <OutputType>Database</OutputType>
+    <TargetPlatform>SQLServer</TargetPlatform>
+    <SqlServerComponentsVersion>2.0.0.0</SqlServerComponentsVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SqlServer" />
+    <ToolsVersion>17.0</ToolsVersion>
+  </ItemGroup>
+  <ItemGroup>
+    <SqlScript Include="Tables\EventTypes.sql" DeploymentResource="Tables\EventTypes.sql" />
+    <SqlScript Include="Tables\EventCategories.sql" DeploymentResource="Tables\EventCategories.sql" />
+    <SqlScript Include="Tables\EventStatuses.sql" DeploymentResource="Tables\EventStatuses.sql" />
+    <SqlScript Include="Tables\CalendarEvents.sql" DeploymentResource="Tables\CalendarEvents.sql" />
+    <SqlScript Include="Views\vw_CalendarEvents_Details.sql" DeploymentResource="Views\vw_CalendarEvents_Details.sql" />
+    <SqlScript Include="Functions\fn_CalendarEvent_IsOverlapping.sql" DeploymentResource="Functions\fn_CalendarEvent_IsOverlapping.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_Create.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_Create.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_Update.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_Update.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_Delete.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_Delete.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetById.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetById.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetUpcoming.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetUpcoming.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetPast.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetPast.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetStatistics.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetStatistics.sql" />
+    <SqlScript Include="StoredProcedures\usp_CalendarEvent_SelectAll.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_SelectAll.sql" />
+    <SqlScript Include="Indexes\CI_CalendarEvents_Filtering.sql" DeploymentResource="Indexes\CI_CalendarEvents_Filtering.sql" />
+    <PreDeploymentScript Include="Scripts\Pre-Deployment.sql" />
+    <PostDeploymentScript Include="Scripts\Post-Deployment.sql" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DeploymentPlan>$(MSBuildProjectDirectory)\Deployment\CalendarManagement.Database.deploy</DeploymentPlan>
+    <DeploymentScript>$(MSBuildProjectDirectory)\Deployment\CalendarManagement.Database.deploy</DeploymentScript>
+  </PropertyGroup>
+</Project>
