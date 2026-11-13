@@ -17,6 +17,8 @@
     <SqlScript Include="Tables\EventTypes.sql" DeploymentResource="Tables\EventTypes.sql" />
     <SqlScript Include="Tables\EventCategories.sql" DeploymentResource="Tables\EventCategories.sql" />
     <SqlScript Include="Tables\EventStatuses.sql" DeploymentResource="Tables\EventStatuses.sql" />
+    <SqlScript Include="Tables\Users.sql" DeploymentResource="Tables\Users.sql" />
+    <SqlScript Include="Tables\UserSettings.sql" DeploymentResource="Tables\UserSettings.sql" />
     <SqlScript Include="Tables\CalendarEvents.sql" DeploymentResource="Tables\CalendarEvents.sql" />
     <SqlScript Include="Views\vw_CalendarEvents_Details.sql" DeploymentResource="Views\vw_CalendarEvents_Details.sql" />
     <SqlScript Include="Functions\fn_CalendarEvent_IsOverlapping.sql" DeploymentResource="Functions\fn_CalendarEvent_IsOverlapping.sql" />
@@ -28,6 +30,12 @@
     <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetPast.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetPast.sql" />
     <SqlScript Include="StoredProcedures\usp_CalendarEvent_GetStatistics.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_GetStatistics.sql" />
     <SqlScript Include="StoredProcedures\usp_CalendarEvent_SelectAll.sql" DeploymentResource="StoredProcedures\usp_CalendarEvent_SelectAll.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_GetProfile.sql" DeploymentResource="StoredProcedures\usp_Users_GetProfile.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_UpdateProfile.sql" DeploymentResource="StoredProcedures\usp_Users_UpdateProfile.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_ChangePassword.sql" DeploymentResource="StoredProcedures\usp_Users_ChangePassword.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_GetSettings.sql" DeploymentResource="StoredProcedures\usp_Users_GetSettings.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_UpdateSettings.sql" DeploymentResource="StoredProcedures\usp_Users_UpdateSettings.sql" />
+    <SqlScript Include="StoredProcedures\usp_Users_Delete.sql" DeploymentResource="StoredProcedures\usp_Users_Delete.sql" />
     <SqlScript Include="Indexes\CI_CalendarEvents_Filtering.sql" DeploymentResource="Indexes\CI_CalendarEvents_Filtering.sql" />
     <PreDeploymentScript Include="Scripts\Pre-Deployment.sql" />
     <PostDeploymentScript Include="Scripts\Post-Deployment.sql" />

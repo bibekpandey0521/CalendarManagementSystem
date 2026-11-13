@@ -7,6 +7,12 @@ using CalendarManagement.Api.Middleware;
 using CalendarManagement.Api.Models;
 using CalendarManagement.Api.Repositories;
 using CalendarManagement.Api.Services;
+using CalendarManagement.Api.Services.Authentication;
+using CalendarManagement.Api.Services.Background;
+using CalendarManagement.Api.Services.Email;
+using CalendarManagement.Api.Modules.AI.Interfaces;
+using CalendarManagement.Api.Modules.AI.Services;
+using CalendarManagement.Api.Modules.AI.Tools;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -30,6 +36,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddHealthChecks();
+builder.Services.AddHttpClient("OpenAI");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -44,7 +51,26 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IMeetingParticipantRepository, MeetingParticipantRepository>();
+builder.Services.AddScoped<IEmailNotificationLogRepository, EmailNotificationLogRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+
+// AI Assistant Module
+builder.Services.AddScoped<IAIProvider, OpenAIProvider>();
+builder.Services.AddScoped<IAITool, GetUpcomingEventsTool>();
+builder.Services.AddScoped<IAITool, GetPastEventsTool>();
+builder.Services.AddScoped<IAITool, GetDashboardSummaryTool>();
+builder.Services.AddScoped<IAITool, GetEventByIdTool>();
+builder.Services.AddScoped<IAITool, CreateEventTool>();
+builder.Services.AddScoped<IAITool, DeleteEventTool>();
+builder.Services.AddScoped<IAIAssistantService, AIAssistantService>();
+builder.Services.AddScoped<MeetingParticipantRepository>();
+builder.Services.AddScoped<EmailNotificationLogRepository>();
+builder.Services.AddHostedService<EmailNotificationWorker>();
 builder.Services.AddScoped<CalendarManagement.Api.Middleware.ExceptionHandlingMiddleware>();
 
 var app = builder.Build();

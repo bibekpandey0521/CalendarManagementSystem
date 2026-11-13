@@ -17,13 +17,10 @@ import {
   Calendar as CalendarIcon,
   Clock,
   MapPin,
-  Type,
-  Users,
-  Tag,
   X,
-  Check,
 } from "lucide-react"
 import { apiService } from "@/components/services/api"
+import { cn } from "@/components/ui/cn"
 import type {
   CalendarEventDto,
   CreateEventDto,
@@ -39,15 +36,15 @@ const EVENT_TYPES: { value: EventType; label: string }[] = [
 ]
 
 interface CategoryOption {
-  value: EventCategory;
-  label: string;
-  color: string;
+  value: EventCategory
+  label: string
+  color: string
 }
 
 interface StatusOption {
-  value: EventStatus;
-  label: string;
-  color: string;
+  value: EventStatus
+  label: string
+  color: string
 }
 
 const EVENT_CATEGORIES: CategoryOption[] = [
@@ -78,6 +75,7 @@ export function EventFormDialog({
   eventToEdit,
 }: EventFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [formData, setFormData] = useState<CreateEventDto & UpdateEventDto>({
     title: eventToEdit?.title ?? "",
     description: eventToEdit?.description ?? "",
@@ -116,17 +114,20 @@ export function EventFormDialog({
       newErrors.title = "Title is required"
     } else if (formData.title.trim().length < 2) {
       newErrors.title = "Title must be at least 2 characters"
+    } else if (formData.title.trim().length > 200) {
+      newErrors.title = "Title must not exceed 200 characters"
     }
     if (!formData.startTime) {
-      newErrors.startTime = "Start time is required"
+      newErrors.startTime = "Start date and time are required"
     }
     if (!formData.endTime) {
-      newErrors.endTime = "End time is required"
+      newErrors.endTime = "End date and time are required"
     }
     if (formData.startTime && formData.endTime && formData.endTime <= formData.startTime) {
       newErrors.endTime = "End time must be after start time"
     }
     setErrors(newErrors)
+    setSubmitted(true)
     return Object.keys(newErrors).length === 0
   }
 
@@ -146,7 +147,7 @@ export function EventFormDialog({
     } catch (err: any) {
       setErrors({
         ...errors,
-        submit: err.detail || "Failed to save event",
+        submit: err.detail || "Failed to save event. Please try again.",
       })
     } finally {
       setIsLoading(false)
@@ -158,6 +159,12 @@ export function EventFormDialog({
     return new Date(isoString).toISOString().slice(0, 16)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose()
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogTrigger asChild>
@@ -165,29 +172,35 @@ export function EventFormDialog({
           {eventToEdit ? "Edit Event" : "Create Event"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent
+        className="sm:max-w-lg max-w-md w-full overflow-y-auto max-h-[90vh]"
+      >
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-lg font-semibold leading-none">
             {eventToEdit ? "Edit Event" : "Create New Event"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground">
             Fill in the event details below.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-5 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Event Title</Label>
               <Input
                 id="title"
+                required
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
                 placeholder="e.g. Team stand-up"
-                className={errors.title ? "border-red-500" : ""}
+                className={cn(
+                  "border-input",
+                  errors.title && "border-red-500 ring-1 ring-red-500"
+                )}
               />
-              {errors.title && (
+              {errors.title && submitted && (
                 <p className="text-xs text-red-600">{errors.title}</p>
               )}
             </div>
@@ -195,6 +208,7 @@ export function EventFormDialog({
               <Label htmlFor="type">Event Type</Label>
               <select
                 id="type"
+                required
                 value={String(formData.type ?? "")}
                 onChange={(e) =>
                   setFormData({
@@ -202,7 +216,7 @@ export function EventFormDialog({
                     type: Number(e.target.value) as EventType,
                   })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {EVENT_TYPES.map((t) => (
                   <option key={t.value} value={String(t.value)}>
@@ -222,22 +236,27 @@ export function EventFormDialog({
                 setFormData({ ...formData, description: e.target.value })
               }
               placeholder="Add details about this event"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Date & Time</Label>
               <Input
                 id="startTime"
                 type="datetime-local"
+                required
                 value={formatDateTimeForInput(formData.startTime)}
                 onChange={(e) =>
                   setFormData({ ...formData, startTime: e.target.value })
                 }
-                className={errors.startTime ? "border-red-500" : ""}
+                className={cn(
+                  "border-input",
+                  errors.startTime && "border-red-500 ring-1 ring-red-500"
+                )}
               />
-              {errors.startTime && (
+              {errors.startTime && submitted && (
                 <p className="text-xs text-red-600">{errors.startTime}</p>
               )}
             </div>
@@ -246,23 +265,28 @@ export function EventFormDialog({
               <Input
                 id="endTime"
                 type="datetime-local"
+                required
                 value={formatDateTimeForInput(formData.endTime)}
                 onChange={(e) =>
                   setFormData({ ...formData, endTime: e.target.value })
                 }
-                className={errors.endTime ? "border-red-500" : ""}
+                className={cn(
+                  "border-input",
+                  errors.endTime && "border-red-500 ring-1 ring-red-500"
+                )}
               />
-              {errors.endTime && (
+              {errors.endTime && submitted && (
                 <p className="text-xs text-red-600">{errors.endTime}</p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <select
                 id="category"
+                required
                 value={String(formData.category ?? "")}
                 onChange={(e) =>
                   setFormData({
@@ -270,7 +294,7 @@ export function EventFormDialog({
                     category: Number(e.target.value) as EventCategory,
                   })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {EVENT_CATEGORIES.map((c) => (
                   <option key={c.value} value={String(c.value)}>
@@ -283,6 +307,7 @@ export function EventFormDialog({
               <Label htmlFor="status">Status</Label>
               <select
                 id="status"
+                required
                 value={String(formData.status ?? "")}
                 onChange={(e) =>
                   setFormData({
@@ -290,7 +315,7 @@ export function EventFormDialog({
                     status: Number(e.target.value) as EventStatus,
                   })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {EVENT_STATUSES.map((s) => (
                   <option key={s.value} value={String(s.value)}>
@@ -310,6 +335,7 @@ export function EventFormDialog({
                 setFormData({ ...formData, location: e.target.value })
               }
               placeholder="e.g. Conference Room A or Zoom link"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
 
@@ -321,32 +347,43 @@ export function EventFormDialog({
               onChange={(e) =>
                 setFormData({ ...formData, isAllDay: e.target.checked })
               }
-              className="rounded border-input bg-background text-primary focus:ring-primary"
+              className="rounded border-input bg-background text-primary focus:ring-primary h-4 w-4"
             />
-            <Label htmlFor="isAllDay">All-day event</Label>
+            <Label htmlFor="isAllDay" className="text-sm font-medium">
+              All-day event
+            </Label>
           </div>
 
           {errors.submit && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
               {errors.submit}
             </div>
           )}
 
-          <div className="flex flex-row-reverse gap-2 mt-6">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? "Saving..." : "Save Event"}
-            </Button>
+          <div className="flex flex-row-reverse gap-3 mt-8">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="w-auto"
             >
               Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-auto"
+            >
+              {isLoading ? (
+                <>
+                  <span className="flex items-center gap-2">
+                    Saving...
+                  </span>
+                </>
+              ) : (
+                "Save Event"
+              )}
             </Button>
           </div>
         </form>

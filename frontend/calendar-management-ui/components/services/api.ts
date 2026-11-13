@@ -12,6 +12,13 @@ import type {
   PagedResult,
   DashboardSummary,
   ApiError,
+  UserProfileDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  UserSettingsDto,
+  UpdateSettingsDto,
+  MeetingParticipantDto,
+  EmailNotificationLogDto,
 } from "../../types/calendar";
 
 const API_BASE =
@@ -122,10 +129,126 @@ class ApiService {
     return response.data;
   }
 
+  // ===== User =====
+
+  async getUserProfile(): Promise<UserProfileDto> {
+    const response = await this.client.get<UserProfileDto>("/api/users/profile");
+    return response.data;
+  }
+
+  async updateProfile(dto: UpdateProfileDto): Promise<void> {
+    await this.client.put("/api/users/profile", dto);
+  }
+
+  async changePassword(dto: ChangePasswordDto): Promise<void> {
+    await this.client.put("/api/users/password", dto);
+  }
+
+  async getUserSettings(): Promise<UserSettingsDto> {
+    const response = await this.client.get<UserSettingsDto>(
+      "/api/users/settings"
+    );
+    return response.data;
+  }
+
+  async updateSettings(dto: UpdateSettingsDto): Promise<void> {
+    await this.client.put("/api/users/settings", dto);
+  }
+
+  async deleteAccount(): Promise<void> {
+    await this.client.delete("/api/users/account");
+  }
+
   // ===== Health =====
 
   async healthCheck(): Promise<string> {
     const response = await this.client.get("/health");
+    return response.data;
+  }
+
+  // ===== AI Assistant =====
+
+  async sendAIMessage(
+    message: string,
+    conversationId?: string | null
+  ): Promise<{ message: string; conversationId: string }> {
+    const response = await this.client.post<{ message: string; conversationId: string }>(
+      "/api/ai/chat",
+      { message, conversationId }
+    );
+    return response.data;
+  }
+
+  async getAIHistory(conversationId: string): Promise<any[]> {
+    const response = await this.client.get<any[]>(
+      `/api/ai/history/${conversationId}`
+    );
+    return response.data;
+  }
+
+  async clearAIHistory(conversationId: string): Promise<void> {
+    await this.client.delete(`/api/ai/history/${conversationId}`);
+  }
+
+  // ===== Authentication =====
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>(
+      "/api/auth/forgot-password",
+      { email }
+    );
+    return response.data;
+  }
+
+  async resetPassword(
+    email: string,
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>(
+      "/api/auth/reset-password",
+      { email, token, newPassword, confirmPassword }
+    );
+    return response.data;
+  }
+
+  // ===== Meeting Participants =====
+
+  async getMeetingParticipants(meetingId: number): Promise<MeetingParticipantDto[]> {
+    const response = await this.client.get<MeetingParticipantDto[]>(
+      `/api/meetings/${meetingId}/participants`
+    );
+    return response.data;
+  }
+
+  async addMeetingParticipant(
+    meetingId: number,
+    dto: { email: string; participantName?: string; userId?: number }
+  ): Promise<number> {
+    const response = await this.client.post<number>(
+      `/api/meetings/${meetingId}/participants`,
+      dto
+    );
+    return response.data;
+  }
+
+  async removeMeetingParticipants(meetingId: number): Promise<void> {
+    await this.client.delete(`/api/meetings/${meetingId}/participants`);
+  }
+
+  async getMeetingNotifications(meetingId: number): Promise<EmailNotificationLogDto[]> {
+    const response = await this.client.get<EmailNotificationLogDto[]>(
+      `/api/meetings/${meetingId}/notifications`
+    );
+    return response.data;
+  }
+
+  async getPendingNotifications(limit: number = 50): Promise<EmailNotificationLogDto[]> {
+    const response = await this.client.get<EmailNotificationLogDto[]>(
+      "/api/meetings/notifications/pending",
+      { params: { limit } }
+    );
     return response.data;
   }
 }

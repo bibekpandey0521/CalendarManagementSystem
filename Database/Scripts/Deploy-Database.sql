@@ -18,11 +18,27 @@ IF OBJECT_ID(N'dbo.usp_CalendarEvent_Delete', N'P') IS NOT NULL DROP PROCEDURE d
 GO
 IF OBJECT_ID(N'dbo.usp_CalendarEvent_Create', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_CalendarEvent_Create;
 GO
-IF OBJECT_ID(N'dbo.fn_CalendarEvent_IsOverlapping', N'F') IS NOT NULL DROP FUNCTION dbo.fn_CalendarEvent_IsOverlapping;
+IF OBJECT_ID(N'dbo.fn_CalendarEvent_IsOverlapping', N'FN') IS NOT NULL DROP FUNCTION dbo.fn_CalendarEvent_IsOverlapping;
 GO
 IF OBJECT_ID(N'dbo.vw_CalendarEvents_Details', N'V') IS NOT NULL DROP VIEW dbo.vw_CalendarEvents_Details;
 GO
 IF OBJECT_ID(N'dbo.CalendarEvents', N'U') IS NOT NULL DROP TABLE dbo.CalendarEvents;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_Delete', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_Delete;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_UpdateSettings', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_UpdateSettings;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_GetSettings', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_GetSettings;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_ChangePassword', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_ChangePassword;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_UpdateProfile', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_UpdateProfile;
+GO
+IF OBJECT_ID(N'dbo.usp_Users_GetProfile', N'P') IS NOT NULL DROP PROCEDURE dbo.usp_Users_GetProfile;
+GO
+IF OBJECT_ID(N'dbo.UserSettings', N'U') IS NOT NULL DROP TABLE dbo.UserSettings;
+GO
+IF OBJECT_ID(N'dbo.Users', N'U') IS NOT NULL DROP TABLE dbo.Users;
 GO
 IF OBJECT_ID(N'dbo.EventStatuses', N'U') IS NOT NULL DROP TABLE dbo.EventStatuses;
 GO
@@ -50,6 +66,31 @@ CREATE TABLE dbo.EventStatuses
     Name NVARCHAR(50) NOT NULL CONSTRAINT UQ_EventStatuses_Name UNIQUE
 );
 GO
+CREATE TABLE dbo.Users
+(
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Users PRIMARY KEY,
+    Email NVARCHAR(200) NOT NULL CONSTRAINT UQ_Users_Email UNIQUE,
+    FirstName NVARCHAR(100) NOT NULL,
+    LastName NVARCHAR(100) NOT NULL,
+    PasswordHash NVARCHAR(255) NOT NULL,
+    IsEmailVerified BIT NOT NULL CONSTRAINT DF_Users_IsEmailVerified DEFAULT (0),
+    IsActive BIT NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT (1),
+    CreatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT SYSUTCDATETIME(),
+    UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME()
+);
+GO
+CREATE TABLE dbo.UserSettings
+(
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_UserSettings PRIMARY KEY,
+    UserId INT NOT NULL CONSTRAINT FK_UserSettings_UserId FOREIGN KEY (UserId) REFERENCES dbo.Users (Id),
+    Theme NVARCHAR(20) NOT NULL CONSTRAINT DF_UserSettings_Theme DEFAULT ('light'),
+    NotificationsEnabled BIT NOT NULL CONSTRAINT DF_UserSettings_NotificationsEnabled DEFAULT (1),
+    EmailRemindersEnabled BIT NOT NULL CONSTRAINT DF_UserSettings_EmailRemindersEnabled DEFAULT (1),
+    UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_UserSettings_UpdatedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_UserSettings_UserId UNIQUE (UserId)
+);
+GO
+
 CREATE TABLE dbo.CalendarEvents
 (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CalendarEvents PRIMARY KEY,
@@ -376,6 +417,100 @@ BEGIN
         CASE WHEN @SortBy = 4 AND @SortDirection = 1 THEN numbered.CreatedAt END DESC,
         CASE WHEN @SortBy = 4 AND @SortDirection = 0 THEN numbered.CreatedAt END ASC;
 END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_GetProfile
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT Id, Email, FirstName, LastName, IsEmailVerified, IsActive, CreatedAt, UpdatedAt
+    FROM dbo.Users
+    WHERE Id = @UserId;
+END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_UpdateProfile
+    @UserId INT,
+    @FirstName NVARCHAR(100),
+    @LastName NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Users
+    SET FirstName = @FirstName,
+        LastName = @LastName,
+        UpdatedAt = SYSUTCDATETIME()
+    WHERE Id = @UserId;
+END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_ChangePassword
+    @UserId INT,
+    @NewPasswordHash NVARCHAR(255)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Users
+    SET PasswordHash = @NewPasswordHash,
+        UpdatedAt = SYSUTCDATETIME()
+    WHERE Id = @UserId;
+END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_GetSettings
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT Id, UserId, Theme, NotificationsEnabled, EmailRemindersEnabled, UpdatedAt
+    FROM dbo.UserSettings
+    WHERE UserId = @UserId;
+END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_UpdateSettings
+    @UserId INT,
+    @Theme NVARCHAR(20),
+    @NotificationsEnabled BIT,
+    @EmailRemindersEnabled BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM dbo.UserSettings WHERE UserId = @UserId)
+    BEGIN
+        UPDATE dbo.UserSettings
+        SET Theme = @Theme,
+            NotificationsEnabled = @NotificationsEnabled,
+            EmailRemindersEnabled = @EmailRemindersEnabled,
+            UpdatedAt = SYSUTCDATETIME()
+        WHERE UserId = @UserId;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO dbo.UserSettings (UserId, Theme, NotificationsEnabled, EmailRemindersEnabled, UpdatedAt)
+        VALUES (@UserId, @Theme, @NotificationsEnabled, @EmailRemindersEnabled, SYSUTCDATETIME());
+    END;
+END;
+GO
+
+CREATE PROCEDURE dbo.usp_Users_Delete
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DELETE FROM dbo.UserSettings WHERE UserId = @UserId;
+    DELETE FROM dbo.Users WHERE Id = @UserId;
+END;
+GO
+
+IF OBJECT_ID(N'dbo.fn_CalendarEvent_IsOverlapping', N'FN') IS NOT NULL DROP FUNCTION dbo.fn_CalendarEvent_IsOverlapping;
 GO
 
 CREATE FUNCTION dbo.fn_CalendarEvent_IsOverlapping

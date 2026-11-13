@@ -48,12 +48,33 @@ export function useEvents(initialParams: EventQueryParameters = {}) {
         setLoading(false);
       }
     },
-    [page, pageSize]
+    [
+      page,
+      pageSize,
+      initialParams.search,
+      initialParams.type,
+      initialParams.category,
+      initialParams.status,
+      initialParams.scope,
+      initialParams.from,
+      initialParams.to,
+      initialParams.hasReminder,
+    ]
   );
 
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+  }, [
+    fetchEvents,
+    initialParams.search,
+    initialParams.type,
+    initialParams.category,
+    initialParams.status,
+    initialParams.scope,
+    initialParams.from,
+    initialParams.to,
+    initialParams.hasReminder,
+  ]);
 
   const refetch = useCallback(() => {
     fetchEvents();

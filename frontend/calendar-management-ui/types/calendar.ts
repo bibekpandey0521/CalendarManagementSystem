@@ -110,3 +110,74 @@ export interface ApiError {
   traceId: string;
   errors?: Record<string, string[]>;
 }
+
+// Meeting Participant Types
+
+export interface MeetingParticipantDto {
+  id: number;
+  meetingId: number;
+  userId?: number | null;
+  participantName?: string | null;
+  email: string;
+  createdAt: string;
+}
+
+export interface CreateMeetingParticipantDto {
+  email: string;
+  participantName?: string;
+  userId?: number;
+}
+
+// Email Notification Types
+
+export interface EmailNotificationLogDto {
+  id: number;
+  meetingId: number;
+  participantId?: number | null;
+  recipientEmail: string;
+  notificationType: string;
+  status: string;
+  attemptCount: number;
+  sentAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+// User Types
+
+export interface UserProfileDto {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateProfileDto {
+  firstName: string;
+  lastName: string;
+}
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface UserSettingsDto {
+  id: number;
+  userId: number;
+  theme: string;
+  notificationsEnabled: boolean;
+  emailRemindersEnabled: boolean;
+}
+
+export interface UpdateSettingsDto {
+  theme: string;
+  notificationsEnabled: boolean;
+  emailRemindersEnabled: boolean;
+}
+

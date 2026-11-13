@@ -1,16 +1,13 @@
 /*
- * Calendar Management System - Home Page
- * Next.js 16 App Router + TypeScript + Tailwind CSS + FullCalendar + Axios
+ * Calendar Management System - Home Page (Dashboard)
+ * Next.js 16 App Router + TypeScript + Tailwind CSS + Axios
  */
 
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar } from "@fullcalendar/react"
-import dayGridPlugin from "@fullcalendar/daygrid"
-import timeGridPlugin from "@fullcalendar/timegrid"
-import listPlugin from "@fullcalendar/list"
-import interactionPlugin from "@fullcalendar/interaction"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Sidebar,
 } from "@/app/components/features/sidebar/Sidebar"
@@ -34,34 +31,22 @@ import {
   Users,
   BarChart3,
   Mail,
-  ChevronLeft,
   X,
   Menu,
   LayoutDashboard,
   List,
+  ArrowRight,
 } from "lucide-react"
 import { useEvents, useDashboard, useUpcomingEvents } from "@/hooks/useEvents"
 import type { CalendarEventDto } from "@/types/calendar"
 import { cn } from "@/components/ui/cn"
-import { formatDate, formatTime, getCategoryColor, isToday, isUpcoming } from "@/utils/format"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5050"
-
-const calendarPlugins = [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]
-
-const VIEW_OPTIONS: { value: any; label: string; icon: any }[] = [
-  { value: "dayGridMonth", label: "Month", icon: CalendarIcon },
-  { value: "timeGridWeek", label: "Week", icon: Clock },
-  { value: "timeGridDay", label: "Day", icon: Mail },
-  { value: "listDay", label: "List", icon: List as any },
-]
+import { formatDate, formatTime } from "@/utils/format"
 
 export default function Home() {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDto | null>(null)
-  const [activeView, setActiveView] = useState<"dashboard" | "calendar">("dashboard")
-  const [viewType, setViewType] = useState<any>("dayGridMonth")
   const [currentDate, setCurrentDate] = useState<string>("")
 
   const {
@@ -77,24 +62,7 @@ export default function Home() {
   const { summary } = useDashboard()
   const { events: upcomingEvents } = useUpcomingEvents(5, false)
 
-  const calendarEvents = events.map((e) => ({
-    id: e.id.toString(),
-    title: e.title,
-    start: e.startTime,
-    end: e.endTime,
-    allDay: e.isAllDay,
-    backgroundColor: getCategoryColor(e.category),
-    borderColor: getCategoryColor(e.category),
-    extendedProps: {
-      category: e.eventCategoryName,
-      status: e.eventStatusName,
-      location: e.location,
-      description: e.description,
-    },
-  }))
-
-  const handleEventClick = (info: any) => {
-    const id = parseInt(info.event.id, 10)
+  const handleEventClick = (id: number) => {
     const ev = events.find((e) => e.id === id)
     setSelectedEvent(ev ?? null)
     setDialogOpen(true)
@@ -133,42 +101,24 @@ export default function Home() {
   const meetingsCount = summary?.upcomingMeetings ?? 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/40 flex flex-col">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-30 bg-white border-b border-border">
-        <div className="flex items-center justify-between px-4 py-3 bg-white">
+      <header className="sticky top-0 z-30 bg-card border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 bg-card">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden"
+              className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden cursor-pointer"
               aria-label="Toggle sidebar"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
+              <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
                 C
               </div>
               <h1 className="font-semibold text-lg tracking-tight">Calendar Management</h1>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 hidden md:flex">
-            {VIEW_OPTIONS.map((v) => (
-              <button
-                key={v.label}
-                onClick={() => setViewType(v.value)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors border",
-                  activeView === "calendar" && viewType === v.value
-                    ? "bg-blue-100 text-blue-700 border-blue-200"
-                    : "text-muted-foreground hover:bg-accent border-transparent"
-                )}
-              >
-                <v.icon className="h-4 w-4" />
-                <span>{v.label}</span>
-              </button>
-            ))}
           </div>
 
           <div className="flex items-center gap-2">
@@ -184,117 +134,37 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
+        {/* Desktop Sidebar (inline in flex layout, hidden on mobile) */}
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onCreateEvent={handleCreate}
+        />
+
         {/* Mobile Sidebar Overlay */}
-        {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-        {/* Sidebar */}
-        <aside
-          className={cn(
-            "fixed left-0 top-0 h-full z-40 border-r border-border transition-all duration-300",
-            sidebarOpen ? "w-64" : "w-0 overflow-hidden",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full",
-            "md:relative md:static md:translate-x-0 md:w-64 md:border-0",
-            "bg-background"
-          )}
-        >
-          <div className="flex h-14 items-center justify-between px-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">
-                C
-              </div>
-              <span className="font-semibold text-lg tracking-tight">Calendar</span>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden"
-              aria-label="Close sidebar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            <button
-              onClick={() => {
-                setActiveView("dashboard")
-                setSidebarOpen(false)
-              }}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left",
-                activeView === "dashboard"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-foreground hover:bg-accent"
-              )}
-            >
-              <LayoutDashboard className="h-5 w-5" />
-              <span>Dashboard</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveView("calendar")
-                setSidebarOpen(false)
-              }}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left",
-                activeView === "calendar"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-foreground hover:bg-accent"
-              )}
-            >
-              <CalendarIcon className="h-5 w-5" />
-              <span>Calendar</span>
-            </button>
-            <button
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left text-foreground hover:bg-accent"
-            >
-              <List className="h-5 w-5" />
-              <span>Events</span>
-            </button>
-            <button
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left text-foreground hover:bg-accent"
-            >
-              <Clock className="h-5 w-5" />
-              <span>Meetings <Badge variant="secondary" className="ml-auto">3</Badge></span>
-            </button>
-            <button
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left text-foreground hover:bg-accent"
-            >
-              <BarChart3 className="h-5 w-5" />
-              <span>Reports</span>
-            </button>
-          </nav>
-
-          <div className="p-4 border-t border-border">
-            <Button onClick={handleCreate} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              New Event
-            </Button>
-          </div>
-        </aside>
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {activeView === "dashboard" ? (
-            <DashboardView
-              totalEvents={totalEvents}
-              upcomingCount={upcomingCount}
-              todaysCount={todaysCount}
-              meetingsCount={meetingsCount}
-              upcomingEvents={upcomingEvents}
-              loading={loading}
-              error={error}
-              refetch={refetch}
-            />
-          ) : (
-            <CalendarView
-              events={calendarEvents}
-              viewType={viewType}
-              onEventClick={handleEventClick}
-              loading={loading}
-              error={error}
-            />
-          )}
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
+          <DashboardView
+            totalEvents={totalEvents}
+            upcomingCount={upcomingCount}
+            todaysCount={todaysCount}
+            meetingsCount={meetingsCount}
+            upcomingEvents={upcomingEvents}
+            loading={loading}
+            error={error}
+            refetch={refetch}
+            onEventClick={handleEventClick}
+            onViewAll={() => router.push("/events")}
+            router={router}
+          />
         </main>
       </div>
 
@@ -322,6 +192,9 @@ function DashboardView({
   loading,
   error,
   refetch,
+  onEventClick,
+  onViewAll,
+  router,
 }: {
   totalEvents: number
   upcomingCount: number
@@ -331,6 +204,9 @@ function DashboardView({
   loading: boolean
   error: any
   refetch: () => void
+  onEventClick: (id: number) => void
+  onViewAll: () => void
+  router: any
 }) {
   if (loading) {
     return (
@@ -345,7 +221,7 @@ function DashboardView({
     return (
       <div className="rounded-lg bg-red-50 p-4 border border-red-100">
         <h3 className="text-sm font-semibold text-red-800">Error loading dashboard</h3>
-        <p className="text-sm text-red-600 mt-1">{error.detail || error.message || "Unknown error"}</p>
+        <p className="text-sm text-red-600 mt-1">{error.detail || "Unknown error"}</p>
         <button onClick={refetch} className="mt-3 text-sm text-blue-600 hover:underline">
           Retry
         </button>
@@ -366,32 +242,56 @@ function DashboardView({
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - All Clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Events"
-          value={totalEvents}
-          icon={CalendarIcon}
-          color="bg-blue-500"
-        />
-        <StatCard
-          title="Upcoming"
-          value={upcomingCount}
-          icon={Clock}
-          color="bg-amber-500"
-        />
-        <StatCard
-          title="Today"
-          value={todaysCount}
-          icon={CalendarIcon}
-          color="bg-emerald-500"
-        />
-        <StatCard
-          title="Meetings"
-          value={meetingsCount}
-          icon={Users}
-          color="bg-purple-500"
-        />
+        <Link
+          href="/events"
+          onClick={() => router.push("/events")}
+          className="block"
+        >
+          <StatCard
+            title="Total Events"
+            value={totalEvents}
+            icon={CalendarIcon}
+            color="bg-blue-500"
+          />
+        </Link>
+        <Link
+          href="/events?scope=upcoming"
+          onClick={() => router.push("/events?scope=upcoming")}
+          className="block"
+        >
+          <StatCard
+            title="Upcoming"
+            value={upcomingCount}
+            icon={Clock}
+            color="bg-amber-500"
+          />
+        </Link>
+        <Link
+          href="/calendar"
+          onClick={() => router.push("/calendar")}
+          className="block"
+        >
+          <StatCard
+            title="Today"
+            value={todaysCount}
+            icon={CalendarIcon}
+            color="bg-emerald-500"
+          />
+        </Link>
+        <Link
+          href="/meetings"
+          onClick={() => router.push("/meetings")}
+          className="block"
+        >
+          <StatCard
+            title="Meetings"
+            value={meetingsCount}
+            icon={Users}
+            color="bg-purple-500"
+          />
+        </Link>
       </div>
 
       {/* Upcoming Meetings */}
@@ -399,9 +299,13 @@ function DashboardView({
         <div className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Upcoming Events</h3>
-            <a href="#" className="text-sm text-blue-600 hover:underline">
-              View all
-            </a>
+            <Link
+              href="/events"
+              onClick={onViewAll}
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
         <div className="divide-y divide-border">
@@ -411,7 +315,13 @@ function DashboardView({
             </div>
           ) : (
             upcomingEvents.map((ev) => (
-              <div key={ev.id} className="px-6 py-4 flex items-center justify-between">
+              <div
+                key={ev.id}
+                onClick={() => {
+                  onEventClick(ev.id)
+                }}
+                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-accent transition-colors"
+              >
                 <div>
                   <h4 className="font-medium text-foreground">{ev.title}</h4>
                   <p className="text-sm text-muted-foreground">
@@ -442,7 +352,7 @@ function StatCard({
   color: string
 }) {
   return (
-    <Card>
+    <Card className="cursor-pointer hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
@@ -453,64 +363,5 @@ function StatCard({
         <div className="text-2xl font-bold text-foreground">{value}</div>
       </CardContent>
     </Card>
-  )
-}
-
-function CalendarView({
-  events,
-  viewType,
-  onEventClick,
-  loading,
-  error,
-}: {
-  events: any[]
-  viewType: any
-  onEventClick: (info: any) => void
-  loading: boolean
-  error: any
-}) {
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-3 text-sm text-muted-foreground">Loading calendar…</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-border shadow-sm">
-      <div className="h-[700px]">
-        <Calendar
-          plugins={[
-            dayGridPlugin as any,
-            timeGridPlugin as any,
-            listPlugin as any,
-            interactionPlugin as any,
-          ]}
-          initialView={viewType}
-          events={events}
-          eventClick={onEventClick}
-          editable={false}
-          selectable={false}
-          height="auto"
-          initialEvents={events.map((e) => ({
-            id: e.id,
-            title: e.title,
-            start: e.start,
-            end: e.end,
-            allDay: e.allDay,
-            backgroundColor: e.backgroundColor,
-            borderColor: e.borderColor,
-            extendedProps: e.extendedProps,
-          }))}
-        />
-      </div>
-      {events.length === 0 && (
-        <div className="p-8 text-center text-muted-foreground">
-          No events found.
-        </div>
-      )}
-    </div>
   )
 }

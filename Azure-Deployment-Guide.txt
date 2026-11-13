@@ -1,0 +1,362 @@
+================================================================================
+                    CALENDAR MANAGEMENT SYSTEM
+              AZURE DEPLOYMENT GUIDE (Backend + Frontend + Database)
+================================================================================
+
+Repository: https://github.com/bibekpandey0521/CalendarManagementSystem
+
+Architecture on Azure:
+  - Backend (ASP.NET Core API)  -> Azure App Service (Windows or Linux)
+  - Frontend (Next.js)          -> Azure Static Web Apps (recommended) or App Service
+  - Database (SQL Server SSDT)  -> Azure SQL Database (via DACPAC)
+  - CI/CD                       -> GitHub Actions
+
+--------------------------------------------------------------------------------
+PREREQUISITES
+--------------------------------------------------------------------------------
+
+1. Azure Subscription
+2. Azure CLI (az) installed locally OR use Azure Portal
+3. GitHub repository: https://github.com/bibekpandey0521/CalendarManagementSystem
+4. SQL Server Data Tools (SSDT) for DACPAC generation
+5. .NET 10 SDK, Node.js v22+
+
+--------------------------------------------------------------------------------
+STEP 0: PREPARE GITHUB REPOSITORY (Already Done)
+--------------------------------------------------------------------------------
+
+Your code is already pushed to:
+    https://github.com/bibekpandey0521/CalendarManagementSystem
+
+Verify:
+    git remote -v
+    git log --oneline -1
+
+--------------------------------------------------------------------------------
+STEP 1: CREATE AZURE SQL DATABASE (Backend Data Store)
+--------------------------------------------------------------------------------
+
+Option A: Azure Portal
+1. Go to https://portal.azure.com
+2. Create a resource -> Azure SQL Database
+3. Database name: CalendarManagementDb
+4. Server: Create new (e.g., calendarmanagement-db-server.database.windows.net)
+5. Authentication: SQL Server authentication (set admin username/password)
+6. Pricing tier: Basic or General Purpose (dev/test)
+7. Click Review + create -> Create
+
+Option B: Azure CLI
+    az login
+    az group create --name CalendarManagement-RG --location eastus
+    az sql server create --name calendarmanagement-db-server \
+      --resource-group CalendarManagement-RG \
+      --location eastus \
+      --admin-user sqladmin \
+      --admin-password "<StrongPassword123!>"
+    az sql db create --resource-group CalendarManagement-RG \
+      --server calendarmanagement-db-server \
+      --name CalendarManagementDb \
+      --edition Basic \
+      --compute-model Serverless \
+      --auto-pause-delay 60
+
+STEP 2: CONFIGURE SQL DATABASE FIREWALL
+--------------------------------------------------------------------------------
+
+1. In Azure Portal -> Your SQL Server -> Networking
+2. Add client IP address (your development machine IP)
+3. Or enable "Allow Azure services and resources to access this server"
+
+Get your connection string:
+    Server=tcp:calendarmanagement-db-server.database.windows.net,1433;
+    Initial Catalog=CalendarManagementDb;
+    Persist Security Info=False;
+    User ID=sqladmin;
+    Password=<YourPassword>;
+    MultipleActiveResultSets=False;
+    Encrypt=True;
+    TrustServerCertificate=False;
+    Connection Timeout=30;
+
+--------------------------------------------------------------------------------
+STEP 3: DEPLOY DATABASE (DACPAC) TO AZURE SQL
+--------------------------------------------------------------------------------
+
+Option A: Using SqlPackage.exe (Command Line)
+--------------------------------------------------------------------------------
+
+1. Generate DACPAC locally:
+    msbuild Database\CalendarManagement.Database.sqlproj /p:Configuration=Release
+    Output: Database\bin\Release\CalendarManagement.Database.dacpac
+
+2. Publish DACPAC to Azure SQL:
+    SqlPackage.exe /a:Publish /sfn:"Database\bin\Release\CalendarManagement.Database.dacpac" \
+      /tsn:"tcp:calendarmanagement-db-server.database.windows.net,1433" \
+      /tdn:"CalendarManagementDb" \
+      /tu:"sqladmin" \
+      /tp:"<YourPassword>"
+
+Option B: Using Azure Portal Import/Export
+--------------------------------------------------------------------------------
+
+1. Go to Azure SQL Database -> Import database
+2. Upload your .dacpac file to Azure Storage first
+3. Select storage account, container, and .dacpac file
+4. Provide admin credentials
+5. Click OK
+
+Option C: Using SQL Server Management Studio (SSMS)
+--------------------------------------------------------------------------------
+
+1. Connect to your Azure SQL Server
+2. Right-click Databases -> Deploy Database from DACPAC...
+3. Select your .dacpac file
+4. Configure deployment options
+5. Click Finish
+
+--------------------------------------------------------------------------------
+STEP 4: DEPLOY BACKEND TO AZURE APP SERVICE
+--------------------------------------------------------------------------------
+
+Option A: Azure Portal (Manual Deploy)
+--------------------------------------------------------------------------------
+
+1. Create a resource -> Web App
+2. Name: calendarmanagement-api
+3. Publish: Code
+4. Runtime stack: .NET 10 (LTS)
+5. Operating System: Windows (recommended for SSDT/ADO.NET compatibility)
+6. Region: East US
+7. App Service Plan: Create new (Basic B1 or Standard S1)
+8. Click Review + create -> Create
+
+3. Configure App Settings (Configuration -> Application settings):
+    Add Connection String:
+    Name: DefaultConnection
+    Value: Server=tcp:calendarmanagement-db-server.database.windows.net,1433;Initial Catalog=CalendarManagementDb;Persist Security Info=False;User ID=sqladmin;Password=<YourPassword>;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+    Type: SQLAzure
+
+    Add App Setting:
+    Name: ASPNETCORE_ENVIRONMENT
+    Value: Production
+
+    Add CORS origin:
+    Name: Cors__AllowedOrigins__0
+    Value: https://<your-frontend-domain>.azurestaticapps.net
+
+4. Deploy via GitHub Actions (recommended) or ZIP upload
+   - Deployment Center -> GitHub -> Authorize -> Select your repo -> Branch: main
+
+Option B: Azure CLI
+--------------------------------------------------------------------------------
+
+    az appservice plan create --name CalendarManagement-Plan \
+      --resource-group CalendarManagement-RG \
+      --location eastus \
+      --sku B1 \
+      --is-linux
+
+    az webapp create --resource-group CalendarManagement-RG \
+      --plan CalendarManagement-Plan \
+      --name calendarmanagement-api \
+      --runtime "DOTNETCORE|10.0" \
+      --deployment-local-git
+
+    az webapp config connection-string set \
+      --resource-group CalendarManagement-RG \
+      --name calendarmanagement-api \
+      --settings DefaultConnection="Server=tcp:...;Database=CalendarManagementDb;..." \
+      --connection-string-type SQLAzure
+
+    az webapp config appsettings set \
+      --resource-group CalendarManagement-RG \
+      --name calendarmanagement-api \
+      --settings ASPNETCORE_ENVIRONMENT=Production
+
+--------------------------------------------------------------------------------
+STEP 5: DEPLOY FRONTEND TO AZURE STATIC WEB APPS
+--------------------------------------------------------------------------------
+
+Azure Static Web Apps is the recommended hosting for Next.js static sites.
+
+Option A: Azure Portal
+--------------------------------------------------------------------------------
+
+1. Create a resource -> Static Web App
+2. Name: calendarmanagement-ui
+3. Subscription: Your subscription
+4. Resource group: CalendarManagement-RG
+5. Plan: Free
+6. Source: GitHub
+7. Organization: bibekpandey0521
+8. Repository: CalendarManagementSystem
+9. Branch: main
+10. Build presets: Next.js
+11. App location: /frontend/calendar-management-ui
+12. Api location: (leave blank - API is separate App Service)
+13. Output location: .next (or follow Next.js SWA defaults)
+14. Click Review + create -> Create
+
+13. After creation, go to Configuration -> Environment variables:
+    Add: NEXT_PUBLIC_API_BASE = https://calendarmanagement-api.azurewebsites.net
+
+Option B: Azure CLI + GitHub Actions
+--------------------------------------------------------------------------------
+
+    az staticwebapp create \
+      --name calendarmanagement-ui \
+      --resource-group CalendarManagement-RG \
+      --source https://github.com/bibekpandey0521/CalendarManagementSystem \
+      --branch main \
+      --location eastus \
+      --app-location "/frontend/calendar-management-ui" \
+      --output-location ".next"
+
+Then configure the API base URL in the Static Web App environment variables.
+
+--------------------------------------------------------------------------------
+STEP 6: CONFIGURE CORS FOR PRODUCTION
+--------------------------------------------------------------------------------
+
+Backend needs to allow requests from your frontend domain.
+
+In Azure App Service -> Configuration -> Application settings:
+    Name: Cors__AllowedOrigins__0
+    Value: https://calendarmanagement-ui.azurestaticapps.net
+
+Or add multiple origins:
+    Name: Cors__AllowedOrigins__0
+    Value: https://calendarmanagement-ui.azurestaticapps.net
+
+    Name: Cors__AllowedOrigins__1
+    Value: https://www.yourcustomdomain.com
+
+Then restart the App Service.
+
+--------------------------------------------------------------------------------
+STEP 7: SETUP GITHUB ACTIONS CI/CD (Automatic Deployment)
+--------------------------------------------------------------------------------
+
+Create: .github/workflows/azure-deploy.yml
+
+    name: Build and Deploy to Azure
+
+    on:
+      push:
+        branches: [ main ]
+
+    jobs:
+      build-and-deploy-backend:
+        runs-on: windows-latest
+        steps:
+        - uses: actions/checkout@v4
+        - name: Setup .NET
+          uses: actions/setup-dotnet@v4
+          with:
+            dotnet-version: '10.0.x'
+        - name: Restore
+          run: dotnet restore backend/CalendarManagement.Api/CalendarManagement.Api.csproj
+        - name: Build
+          run: dotnet build backend/CalendarManagement.Api/CalendarManagement.Api.csproj --configuration Release
+        - name: Publish
+          run: dotnet publish backend/CalendarManagement.Api/CalendarManagement.Api.csproj --configuration Release --output ./publish
+        - name: Deploy to Azure App Service
+          uses: azure/webapps-deploy@v3
+          with:
+            app-name: 'calendarmanagement-api'
+            slot-name: 'production'
+            package: ./publish
+            publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+      build-and-deploy-frontend:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v4
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: '22.x'
+        - name: Install dependencies
+          run: cd frontend/calendar-management-ui && npm install
+        - name: Build
+          run: cd frontend/calendar-management-ui && npm run build
+        - name: Deploy to Static Web Apps
+          uses: Azure/static-web-apps-deploy@v1
+          with:
+            azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN }}
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
+            action: 'upload'
+            app_location: '/frontend/calendar-management-ui'
+            output_location: '.next'
+
+GitHub Secrets to configure:
+    Go to: https://github.com/bibekpandey0521/CalendarManagementSystem/settings/secrets/actions
+    Add:
+    1. AZURE_WEBAPP_PUBLISH_PROFILE - Get from App Service -> Get publish profile
+    2. AZURE_SWA_TOKEN - Get from Static Web Apps -> Management -> API token
+
+--------------------------------------------------------------------------------
+STEP 8: VERIFY DEPLOYMENT
+--------------------------------------------------------------------------------
+
+Backend:
+    https://calendarmanagement-api.azurewebsites.net/health
+    https://calendarmanagement-api.azurewebsites.net/swagger
+
+Frontend:
+    https://calendarmanagement-ui.azurestaticapps.net
+
+Full flow:
+    https://calendarmanagement-ui.azurestaticapps.net -> loads calendar -> calls API -> displays events
+
+--------------------------------------------------------------------------------
+STEP 9: CUSTOM DOMAIN (Optional)
+--------------------------------------------------------------------------------
+
+Backend (App Service):
+    1. App Service -> Custom domains -> Add custom domain
+    2. Add CNAME or A record at your DNS provider
+    3. Upload SSL certificate or use App Service Managed Certificate
+
+Frontend (Static Web Apps):
+    1. Static Web App -> Custom domains -> Add domain
+    2. Follow DNS verification steps
+    3. SSL is automatic
+
+Update CORS in backend to include your custom frontend domain.
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+Issue: Backend can't connect to Azure SQL
+Fix: Check SQL Server firewall allows Azure App Service outbound IPs.
+     Check connection string Encrypt=True and TrustServerCertificate=False.
+
+Issue: Frontend CORS error
+Fix: Add frontend URL to Cors__AllowedOrigins__0 in App Service config.
+
+Issue: Static Web Apps build fails
+Fix: Ensure Next.js build works locally: npm run build in frontend folder.
+     Check .github/workflows/azure-deploy.yml paths match your repo structure.
+
+Issue: DACPAC deploy fails
+Fix: Ensure sqladmin has dbcreator permissions. Check firewall rules.
+     Use SqlPackage.exe with /p:BlockOnPossibleDataLoss=False
+
+--------------------------------------------------------------------------------
+COST ESTIMATE (Dev/Test, East US)
+--------------------------------------------------------------------------------
+
+Service                  Tier         Est. Cost/Month
+---------------------------------------------------------------
+Azure SQL Database       Basic        ~$5
+App Service (B1)         Basic        ~$14
+Static Web Apps          Free         $0
+Total                                    ~$19/month
+
+For production, consider Standard S1+ for App Service and General Purpose for SQL.
+
+================================================================================
+END OF AZURE DEPLOYMENT GUIDE
+================================================================================

@@ -1,0 +1,25 @@
+CREATE TABLE dbo.Users
+(
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Users PRIMARY KEY,
+    Email NVARCHAR(200) NOT NULL CONSTRAINT UQ_Users_Email UNIQUE,
+    FirstName NVARCHAR(100) NOT NULL,
+    LastName NVARCHAR(100) NOT NULL,
+    PasswordHash NVARCHAR(255) NOT NULL,
+    IsEmailVerified BIT NOT NULL CONSTRAINT DF_Users_IsEmailVerified DEFAULT (0),
+    IsActive BIT NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT (1),
+    CreatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT SYSUTCDATETIME(),
+    UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_Users_UpdatedAt DEFAULT SYSUTCDATETIME()
+);
+GO
+
+CREATE TABLE dbo.UserSettings
+(
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_UserSettings PRIMARY KEY,
+    UserId INT NOT NULL CONSTRAINT FK_UserSettings_UserId FOREIGN KEY (UserId) REFERENCES dbo.Users (Id),
+    Theme NVARCHAR(20) NOT NULL CONSTRAINT DF_UserSettings_Theme DEFAULT ('light'),
+    NotificationsEnabled BIT NOT NULL CONSTRAINT DF_UserSettings_NotificationsEnabled DEFAULT (1),
+    EmailRemindersEnabled BIT NOT NULL CONSTRAINT DF_UserSettings_EmailRemindersEnabled DEFAULT (1),
+    UpdatedAt DATETIME2(7) NOT NULL CONSTRAINT DF_UserSettings_UpdatedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_UserSettings_UserId UNIQUE (UserId)
+);
+GO
