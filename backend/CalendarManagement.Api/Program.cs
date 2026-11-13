@@ -31,8 +31,29 @@ builder.Services.AddSwaggerGen(options =>
         {
             Title = "Calendar Management API",
             Version = "v1",
-            Description = "REST API for the Calendar Management System: events, meetings, reminders and dashboard summaries."
+            Description = "REST API for the Calendar Management System. Provides endpoints for authentication, dashboard summaries, calendar events, meetings, participants, notifications, users, settings and the AI assistant.",
+            Contact = new Microsoft.OpenApi.OpenApiContact
+            {
+                Name = "Calendar Management System",
+                Url = new Uri("https://github.com/bibekpandey0521/CalendarManagementSystem")
+            },
+            License = new Microsoft.OpenApi.OpenApiLicense
+            {
+                Name = "MIT"
+            }
         });
+
+    // Include XML documentation comments generated from the project.
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (System.IO.File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
+
+    // Keep operations grouped by controller and ordered consistently.
+    options.TagActionsBy(api => new[] { api.GroupName ?? api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
+    options.OrderActionsBy(api => $"{api.ActionDescriptor.RouteValues["controller"]}_{api.HttpMethod}_{api.RelativePath}");
 });
 
 builder.Services.AddHealthChecks();
@@ -81,6 +102,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Calendar Management API v1");
+        options.RoutePrefix = "swagger";
+        options.DocumentTitle = "Calendar Management API - Swagger UI";
+        options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+        options.DisplayRequestDuration();
     });
 }
 

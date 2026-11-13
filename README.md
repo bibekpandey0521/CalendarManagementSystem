@@ -210,6 +210,21 @@ Invoke-WebRequest -Uri "http://localhost:5050/health" -UseBasicParsing
 | `GET /api/dashboard/summary` | GET | Dashboard statistics |
 | `GET /swagger/v1/swagger.json` | GET | OpenAPI spec |
 
+### Swagger / OpenAPI
+
+The API uses **Swashbuckle.AspNetCore 10.3.1** for interactive OpenAPI documentation.
+
+- **Package:** `Swashbuckle.AspNetCore` (10.3.1)
+- **Swagger UI:** http://localhost:5050/swagger
+- **OpenAPI JSON:** http://localhost:5050/swagger/v1/swagger.json
+- **XML comments:** enabled via `GenerateDocumentationFile` in the project file.
+
+The Swagger UI lists all controllers and endpoints, request/response schemas, validation rules and HTTP status codes. In Development, Swagger is enabled automatically; in Production it is disabled unless explicitly enabled.
+
+#### Testing authenticated endpoints
+
+No JWT bearer authentication is currently configured for the API. All endpoints are open in development. If authentication is added later, configure a Bearer security scheme in `Program.cs` and use the **Authorize** button in Swagger UI with a valid token.
+
 ### Example: Create an Event
 
 ```bash
